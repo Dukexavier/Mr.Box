@@ -614,7 +614,7 @@ window.addEventListener('scroll', () => {
 document.addEventListener('DOMContentLoaded', () => {
     const CANVAS     = 6000;
     // Start fully zoomed out so the whole canvas is visible
-    const INIT_SCALE = Math.min(window.innerWidth / CANVAS, window.innerHeight / CANVAS);
+    const INIT_SCALE = Math.max(window.innerWidth / CANVAS, window.innerHeight / CANVAS);
     const ACTUAL_MAX = 1.0;
 
     // ── Zoom level indicator ──────────────────────────────────────────────────
@@ -3651,7 +3651,7 @@ document.addEventListener('contextmenu', (e) => {
     // ── Canvas scale state ────────────────────────────────────────────────────
     const CANVAS_SIZE = 6000;
     // Min scale = just small enough to see the full canvas in the viewport
-    const MIN_SCALE   = Math.min(window.innerWidth / CANVAS_SIZE, window.innerHeight / CANVAS_SIZE);
+    const MIN_SCALE   = Math.max(window.innerWidth / CANVAS_SIZE, window.innerHeight / CANVAS_SIZE);
     const MAX_SCALE   = 1.0;
     let canvasScale = MIN_SCALE; // matches INIT_SCALE in DOMContentLoaded
 
