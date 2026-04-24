@@ -25,7 +25,7 @@
             padding: 0;
             position: relative;
             width:  6000px;
-            height: 6000px;
+            height: 13000px;   /* overridden by JS to match screen aspect ratio */
             background-color: #292929;
             overflow: visible;
             transform-origin: 0 0;
@@ -2395,12 +2395,13 @@ function clientToCanvas(clientX, clientY) {
 // Clamp a box's left/top so it never leaves the 6000×6000 canvas.
 // boxW and boxH default to 200 if not provided.
 function clampToCanvas(left, top, boxW, boxH) {
-    const CANVAS = 6000;
+    const CW = window._canvasW || 6000;
+    const CH = window._canvasH || 6000;
     const w = boxW || 200;
     const h = boxH || 200;
     return {
-        left: Math.max(0, Math.min(left, CANVAS - w)),
-        top:  Math.max(0, Math.min(top,  CANVAS - h)),
+        left: Math.max(0, Math.min(left, CW - w)),
+        top:  Math.max(0, Math.min(top,  CH - h)),
     };
 }
 
@@ -4165,6 +4166,7 @@ document.addEventListener('contextmenu', (e) => {
             { label: () => gridVisible ? '🔲 Hide Grid'   : '🔲 Show Grid',   action: toggleGrid },
             { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves },
             { label: '🖼 Canvas Background',    action: setCanvasBackground },
+            { label: '🗑 Remove Canvas BG',      action: removeCanvasBackground, disabled: !(function(){ const o=document.getElementById('canvas-bg-overlay'); return o && o.style.backgroundImage; })() },
             { label: '👁 Hide Box Elements',     action: hideSelectedBoxElements, disabled: !hasSel },
             { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
             { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
@@ -4493,6 +4495,16 @@ document.addEventListener('contextmenu', (e) => {
         window.addEventListener('focus', cleanup);
         document.body.appendChild(input);
         input.click();
+    }
+
+    function removeCanvasBackground() {
+        const overlay = document.getElementById('canvas-bg-overlay');
+        if (overlay) {
+            overlay.style.backgroundImage = '';
+            overlay.style.opacity = '1';
+        }
+        document.body.style.backgroundImage = '';
+        canvasBgOpacity = 1.0;
     }
 
     function applyCanvasBgImage(url, opacity) {
