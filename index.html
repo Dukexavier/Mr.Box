@@ -4,8 +4,8 @@
 	
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
-    <title>Mr.Box 2.0</title>
-    <meta name="application-name" content="Mr.Box 2.0">
+    <title>Mr.Box 3.0</title>
+    <meta name="application-name" content="Mr.Box 3.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Mr.Box">
@@ -19,6 +19,7 @@
         html {
             overflow: auto;
             background-color: #292929;
+            overscroll-behavior: none;
         }
         body {
             margin: 0;
@@ -285,22 +286,37 @@
         /* Splash screen styles */
         #splash-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #326;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(160deg, #1a0a3a 0%, #326 60%, #1a2a5a 100%);
             color: #fff;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            gap: 16px;
             z-index: 4000;
             animation: fadeOut 1s forwards;
-            animation-delay: 1s;
+            animation-delay: 2s;
+        }
+        #splash-screen img {
+            width: 300px;
+            height: 300px;
+            border-radius: 64px;
+            box-shadow: 0 8px 48px rgba(170,68,255,0.6);
         }
         #splash-screen h1 {
-            font-size: 20px;
+            font-size: 72px;
             margin: 0;
+            font-family: Arial, sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        #splash-screen .splash-sub {
+            font-size: 22px;
+            opacity: 0.6;
+            font-family: Arial, sans-serif;
+            margin-top: -10px;
         }
         @keyframes fadeOut {
             to {
@@ -386,9 +402,21 @@
 <body>
     <button id="pwa-install-btn" onclick="triggerInstall()">📲 Add to Home Screen</button>
     <div id="splash-screen">
-        <h1>Welcome to Mr.Box 2.0!</h1>
-        <button onclick="sessionStorage.clear();localStorage.clear();location.reload();" style="margin-top:14px;padding:6px 16px;font-size:11px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:20px;cursor:pointer;">Clear & Reset</button>
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAFFElEQVR4nO3dPXLbVgCFUUiTddCFN+Co9wpUaSarSOEmbcq0aVJ4FZpx5RW4d7QBFeZGnCJDj0yBxAPxHgjgnlM5tsSfzP34QElj33Qz2u3efZ/z/lin/f7pZq77anpHBk8NLYOofsNGT0u1Y6h2Y4bPnGqFMPlGDJ9rmhrC7ZRPNn6ubeoGL6rH8FmiS06D0SeA8bNUl2xzVADGz9KN3WhxAMbPWozZalEAxs/alG52MADjZ61Ktns2AONn7YY2fDIA42crzm150jfCYO16A/Dqz9ac2vSrAIyfrerbtksgov0UgFd/tu54404Aov0IwKs/KV5u3QlANAEQ7bbrXP6Q57B5JwDRBEA0ARDtxvU/yZwARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARDtl7nu6G7311x31cTX/Z9Vb+/j3eOPX//+9beqt911Xbf78Dj8QQu2/6f+/5M+N7vdu++t72Tt4z+oEcHL4R+rFcLax38wRwTNL4G2Mv6um/5czo2/5M9LbGX8XTfPc2kawJbGf3Dpcyod95QItjT+g9bPyZvgGZwa9alLnhonAWUEcCWH8bd4A0w5ATTW92p+PPq+CJwC8xBAQyXjP/f7ImhPAI2MGf+5PxdBWwJo4OPdY9FlTp++zxNBOwJoZMp3el9+vPG3JYDKjgd76Vd5jj9PCG3M9rNAWzfHQA/34Uun9TgBKhj7ja5SvlHWngAmajX+odsRQR0CmODUV3tqX6L03aavDtXR9Meht/TDcJ++3L/6vc8Pzz/99xzX5n1vsr99+/fVx73/+/nV761Vyx+LdgIUWMr4++7n1Cnw5Y+3czyc1RPAgJLxX9upxyOCYQI4o3T895/mHVrfaSOCywhghCWM/9z9fn54XtzptHQCGOF4dNca/zlLfExLJoCRDgNbwtDuP71dxONYMwFcYGmjW1KUayOAMx7efy76uDdvfm38SIbv89T4t/T9gBYEMGAogmuMv/S+jX+YAAqciuCa4x96DMZfxo9DF3oZQe2/JnGqQwRb/HuBWnMCEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQLSmASzth8ZqWPJzmuvf1p1T6+fU/ARY8mDGWsNz2VIEm/h3grtuHcMZsqbnsIUINvUvxcNSeRNMNAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRAtNv9/unm2g8CrmG/f7pxAhBNAEQTANFuu+7/a6FrPxCY02HzTgCiCYBoPwJwGUSKl1t3AhDtpwCcAmzd8cadAER7FYBTgK3q23bvCSACtubUpl0CEe1kAE4BtuLcls+eACJg7YY2PHgJJALWqmS7Re8BRMDalG62+E2wCFiLMVsd9VUgEbB0Yzc6+sugImCpLtnmpDHvdu++T/l8qGHKi/Kkb4Q5Dbi2qRusNmCnAXOq9eJb/RVcCLRU+6qj6SWMGKih5aX2rNfwgqDEnO8t/wPARnDTAG6FfQAAAABJRU5ErkJggg==" alt="Mr.Box logo">
+        <h1>Mr.Box 3.0</h1>
+        <div class="splash-sub">Tap. Connect. Organise.</div>
+        <button onclick="sessionStorage.clear();localStorage.clear();location.reload();" style="margin-top:6px;padding:5px 14px;font-size:10px;background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:18px;cursor:pointer;">Clear & Reset</button>
     </div>
+
+    <script>
+        // Force-clear any lingering state on every fresh page load
+        sessionStorage.clear();
+        // Move splash to <html> immediately so body's CSS transform doesn't shrink it
+        document.addEventListener('DOMContentLoaded', () => {
+            const splash = document.getElementById('splash-screen');
+            if (splash) document.documentElement.appendChild(splash);
+        });
+    </script>
 
     <!-- Your existing content here -->
 
@@ -2299,8 +2327,10 @@ function zoomToSelected() {
 
         if (t < 1) requestAnimationFrame(frame);
         else {
-            // Commit via applyCanvasScale to sync canvasScale properly
-            applyCanvasScale(newScale, cx, cy);
+            // Apply final scale directly — applyCanvasScale lives in IIFE scope
+            document.body.style.transform = `scale(${newScale})`;
+            scale = newScale;
+            if (window.updateZoomIndicator) window.updateZoomIndicator(newScale);
         }
     }
 
@@ -3997,6 +4027,7 @@ document.addEventListener('contextmenu', (e) => {
 
     function createSidebar() {
         if (sidebar) return sidebar;
+        let longHold = false; // shared drag state — set true during item drag
         sidebar = document.createElement('div');
         sidebar.id = 'group-sidebar';
         sidebar.style.cssText = [
@@ -4047,7 +4078,11 @@ document.addEventListener('contextmenu', (e) => {
         content.id = 'group-sidebar-content';
         content.style.cssText = 'flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:4px;';
         content.addEventListener('scroll', () => { menuScrollTop = content.scrollTop; }, { passive: true });
-        content.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+        // Allow e.preventDefault in touchmove so drag can lock scroll
+        content.addEventListener('touchmove', (e) => {
+            if (longHold) e.preventDefault(); // block scroll while dragging
+            else e.stopPropagation();
+        }, { passive: false });
         sidebar.appendChild(content);
 
         document.documentElement.appendChild(sidebar);
@@ -4134,6 +4169,7 @@ document.addEventListener('contextmenu', (e) => {
 
         const hasCurves    = document.querySelector('svg path') !== null;
         const anyBoxes     = document.querySelectorAll('.parent-box').length > 0;
+        const allConnected = anyBoxes && Array.from(document.querySelectorAll('.parent-box')).every(b => (attachedCurves.get(b) || []).length > 0);
         const hasSel       = selectedBoxes.length > 0;
         const effectiveCount = getEffectiveBoxes().length;
         const hasEffective = effectiveCount > 0;
@@ -4148,7 +4184,7 @@ document.addEventListener('contextmenu', (e) => {
                 selectedBoxes = [];
             },                                                                   disabled: !hasSel },
             { label: '🔵 Select Connected',     action: selectAllConnectedBoxes, disabled: !anyBoxes },
-            { label: '⚪ Select Unconnected',   action: selectUnconnectedBoxes,  disabled: !anyBoxes },
+            { label: '⚪ Select Unconnected',   action: selectUnconnectedBoxes,  disabled: !anyBoxes || allConnected },
             { label: '🔗 Connect All',          action: connectAllSelected,      disabled: !hasMultiSel },
             { label: '🔗 Connect Unconnected',  action: connectUnconnectedBoxes, disabled: !anyBoxes },
             { label: '✂️  Disconnect All',       action: disconnectAllSelected,   disabled: !hasEffective },
@@ -4211,6 +4247,13 @@ document.addEventListener('contextmenu', (e) => {
             saveBtn.addEventListener('touchend', (e) => { e.preventDefault(); saveName(); }, { passive: false });
             nameInput.addEventListener('blur',  saveName);
             nameInput.addEventListener('input', saveName);
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveName();
+                    nameInput.blur(); // dismiss keyboard
+                }
+            });
             nameInput.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
             nameRow.appendChild(nameInput);
             nameRow.appendChild(saveBtn);
@@ -4267,38 +4310,123 @@ document.addEventListener('contextmenu', (e) => {
             content.insertBefore(colourRow, firstBtn);
         }
 
-        items.forEach(({ label, action, dismissAfter, colourMode, disabled }) => {
+        // ── Drag-to-reorder with localStorage persistence ─────────────────────
+        const SIDEBAR_ORDER_KEY = 'mrbox_sidebar_order';
+        const savedOrder = (() => { try { return JSON.parse(localStorage.getItem(SIDEBAR_ORDER_KEY)) || null; } catch(_) { return null; } })();
+
+        const getLabel = (item) => typeof item.label === 'function' ? item.label() : item.label;
+        const orderedItems = savedOrder
+            ? [...items].sort((a, b) => {
+                const ai = savedOrder.indexOf(getLabel(a));
+                const bi = savedOrder.indexOf(getLabel(b));
+                return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+              })
+            : items;
+
+        const itemEls = [];
+        let dragItem = null;
+
+        orderedItems.forEach(({ label, action, dismissAfter, colourMode, disabled }) => {
             const btn = document.createElement('div');
             const isDisabled = !!disabled;
+            btn.dataset.label = getLabel({ label });
+            btn.style.cssText = `padding:6px 10px;cursor:${isDisabled ? 'default' : 'pointer'};border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:${isDisabled ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.88)'};font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;`;
 
-            btn.textContent = typeof label === 'function' ? label() : label;
-            btn.style.cssText = `padding:6px 10px;cursor:${isDisabled ? 'default' : 'pointer'};border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:${isDisabled ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.88)'};font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+            const handle = document.createElement('span');
+            handle.textContent = '⠿';
+            handle.style.cssText = 'opacity:0.25;font-size:9px;flex-shrink:0;';
+            const lbl = document.createElement('span');
+            lbl.textContent = typeof label === 'function' ? label() : label;
+            lbl.style.flex = '1';
+            btn.appendChild(handle); btn.appendChild(lbl);
 
-            let touchStartY = 0, isTouchScroll = false;
-            btn.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; isTouchScroll = false; }, { passive: true });
-            btn.addEventListener('touchmove',  (e) => { if (Math.abs(e.touches[0].clientY - touchStartY) > 8) isTouchScroll = true; }, { passive: true });
+            let tsY = 0, isScroll = false, holdTimer = null;
+            btn.addEventListener('touchstart', (e) => {
+                tsY = e.touches[0].clientY; isScroll = false; longHold = false;
+                btn.style.background = 'rgba(255,255,255,0.07)';
+                holdTimer = setTimeout(() => {
+                    longHold = true; dragItem = btn;
+                    btn.style.background = 'rgba(255,255,255,0.2)';
+                    btn.style.opacity = '0.7';
+                    content.style.overflowY = 'hidden'; // lock scroll during drag
+                }, 450);
+            }, { passive: true });
 
-            btn.addEventListener('touchstart', () => { btn.style.background = 'rgba(255,255,255,0.1)'; }, { passive: true });
-            btn.addEventListener('touchend',   () => { btn.style.background = ''; }, { passive: true });
+            btn.addEventListener('touchmove', (e) => {
+                if (Math.abs(e.touches[0].clientY - tsY) > 6) { isScroll = true; clearTimeout(holdTimer); }
+                if (!longHold || !dragItem) return;
+                e.stopPropagation();
+                const ty = e.touches[0].clientY;
+                const myIdx = itemEls.indexOf(btn);
+                itemEls.forEach((other, oi) => {
+                    if (other === btn) return;
+                    const r = other.getBoundingClientRect();
+                    if (ty >= r.top && ty <= r.bottom) {
+                        if (myIdx < oi) content.insertBefore(other, btn);
+                        else content.insertBefore(btn, other);
+                        itemEls.splice(myIdx, 1);
+                        itemEls.splice(oi, 0, btn);
+                    }
+                });
+            }, { passive: false });
 
-            const fire = (e) => {
-                if (isTouchScroll || isDisabled) return;
+            btn.addEventListener('touchend', (e) => {
+                clearTimeout(holdTimer);
+                btn.style.background = ''; btn.style.opacity = '';
+                if (longHold) {
+                    dragItem = null; longHold = false;
+                    content.style.overflowY = 'auto'; // restore scroll
+                    try { localStorage.setItem(SIDEBAR_ORDER_KEY, JSON.stringify(itemEls.map(el => el.dataset.label))); } catch(_) {}
+                    return;
+                }
+                if (isScroll || isDisabled) return;
                 if (e.cancelable) e.preventDefault();
                 e.stopPropagation();
                 action();
-                if (colourMode) {
-                    // Hide sidebar, show the two-icon colour picker
-                    hideSidebar();
-                    showColourPicker();
-                } else if (!dismissAfter && multiSelectMode) {
-                    setTimeout(() => showContextMenu(), 150);
-                }
-            };
+                if (colourMode) { hideSidebar(); showColourPicker(); }
+                else if (!dismissAfter && multiSelectMode) setTimeout(() => showContextMenu(), 150);
+            }, { passive: false });
 
-            btn.addEventListener('click',    fire);
-            btn.addEventListener('touchend', fire, { passive: false });
+            btn.addEventListener('click', () => {
+                if (isDisabled || longHold) return;
+                action();
+                if (colourMode) { hideSidebar(); showColourPicker(); }
+                else if (!dismissAfter && multiSelectMode) setTimeout(() => showContextMenu(), 150);
+            });
+
+            itemEls.push(btn);
             content.appendChild(btn);
         });
+
+        // ── Grid dim slider (shown only when grid is visible) ────────────────
+        if (gridVisible) {
+            const gridSection = document.createElement('div');
+            gridSection.style.cssText = 'padding:5px 8px 4px;border-top:1px solid rgba(255,255,255,0.1);margin-top:4px;';
+
+            const gridLabel = document.createElement('div');
+            gridLabel.textContent = '🔲 Grid opacity';
+            gridLabel.style.cssText = 'font-size:7px;color:rgba(255,255,255,0.5);margin-bottom:4px;';
+
+            const gridSlider = document.createElement('input');
+            gridSlider.type  = 'range';
+            gridSlider.min   = '0';
+            gridSlider.max   = '100';
+            gridSlider.step  = '5';
+            // Read current grid opacity from the element
+            const gridEl = document.querySelector('.grid');
+            gridSlider.value = gridEl ? Math.round(parseFloat(gridEl.style.opacity || 1) * 100) : 100;
+            gridSlider.style.cssText = 'width:100%;cursor:pointer;touch-action:none;';
+            gridSlider.addEventListener('input', () => {
+                if (gridEl) gridEl.style.opacity = gridSlider.value / 100;
+                const borderEl = document.getElementById('canvas-border');
+                if (borderEl) borderEl.style.opacity = gridSlider.value / 100;
+            });
+            gridSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+
+            gridSection.appendChild(gridLabel);
+            gridSection.appendChild(gridSlider);
+            content.appendChild(gridSection);
+        }
 
         // ── Canvas background transparency (shown when bg image is set) ─────────
         const canvasBgOverlay = document.getElementById('canvas-bg-overlay');
@@ -4326,6 +4454,12 @@ document.addEventListener('contextmenu', (e) => {
             bgSection.appendChild(bgSlider);
             content.appendChild(bgSection);
         }
+
+        // ── Version number ────────────────────────────────────────────────────
+        const versionDiv = document.createElement('div');
+        versionDiv.textContent = 'Mr.Box 3.0  v3.001';
+        versionDiv.style.cssText = 'padding:8px 10px 12px;font-size:7px;color:rgba(255,255,255,0.2);font-family:Arial,sans-serif;text-align:center;';
+        content.appendChild(versionDiv);
 
         // Slide in
         sb.style.right = '0';
@@ -4549,20 +4683,22 @@ document.addEventListener('contextmenu', (e) => {
 
     // Find the SVG path curve closest to a viewport point, within a touch radius.
     function findCurveNearPoint(clientX, clientY) {
-        const HIT_RADIUS = 20; // viewport pixels — generous for a finger
+        const HIT_RADIUS = 20;
         const svg = document.querySelector('svg');
         if (!svg) return null;
         const paths = svg.querySelectorAll('path');
+        if (!paths.length) return null;
         let closest = null, closestDist = Infinity;
+        const s = scale || 1;
         paths.forEach(path => {
             try {
                 const len = path.getTotalLength();
-                const steps = Math.min(60, Math.ceil(len / 10));
+                if (!len) return;
+                const steps = Math.min(30, Math.max(5, Math.ceil(len / 20)));
                 for (let i = 0; i <= steps; i++) {
                     const pt = path.getPointAtLength((i / steps) * len);
-                    // pt is in SVG/canvas coords; convert to viewport
-                    const vpX = pt.x * (scale || 1) - window.scrollX;
-                    const vpY = pt.y * (scale || 1) - window.scrollY;
+                    const vpX = pt.x * s - window.scrollX;
+                    const vpY = pt.y * s - window.scrollY;
                     const d = Math.hypot(vpX - clientX, vpY - clientY);
                     if (d < HIT_RADIUS && d < closestDist) {
                         closestDist = d;
@@ -4843,6 +4979,7 @@ document.addEventListener('contextmenu', (e) => {
         if (selectedBoxes.length < 2) return;
 
         const svg = document.querySelector('svg') || createSVGLayer();
+        const newCurves = new Set();
 
         for (let i = 0; i < selectedBoxes.length - 1; i++) {
             const boxA = selectedBoxes[i];
@@ -4865,8 +5002,29 @@ document.addEventListener('contextmenu', (e) => {
             attachCurve(boxA, boxB, curve);
             enableCurveInteraction(curve);
             recordAction('addCurve', curve, { startBox: boxA, endBox: boxB });
+            newCurves.add(curve);
         }
-        // Keep in multi-select — menu reshows automatically
+
+        // Also collect all existing curves between these boxes
+        const boxSet = new Set(selectedBoxes);
+        selectedBoxes.forEach(b => {
+            (attachedCurves.get(b) || []).forEach(({ otherBox, curve }) => {
+                if (boxSet.has(otherBox)) newCurves.add(curve);
+            });
+        });
+
+        // Set up activeCurveGroup so the sidebar shows name/colour controls
+        if (newCurves.size > 0) {
+            activeCurveGroup = {
+                curves:    newCurves,
+                boxes:     [...selectedBoxes],
+                name:      '',
+                seedCurve: [...newCurves][0],
+            };
+        }
+
+        // Reshow sidebar so user can name the group
+        setTimeout(() => showContextMenu(), 200);
     }
 
     // Arrange selected boxes (+ all curve-connected boxes) in a single horizontal row.
@@ -5112,6 +5270,15 @@ document.addEventListener('contextmenu', (e) => {
                 return;
             }
 
+            // Safety: if multiSelectMode is stuck but sidebar and banner are gone, reset
+            if (multiSelectMode) {
+                const sidebarOpen = sidebar && sidebar.style.right === '0px';
+                const bannerExists = !!multiSelectBanner;
+                if (!sidebarOpen && !bannerExists) {
+                    exitMultiSelectMode();
+                }
+            }
+
             // ── In multi-select mode: tap to toggle box selection ────────────
             if (multiSelectMode) {
                 // If the tap is on the sidebar or colour repeat button, let them handle it
@@ -5147,18 +5314,12 @@ document.addEventListener('contextmenu', (e) => {
 
             longPressX = x; longPressY = y; longPressBox = boxUnder;
 
-            // Capture a nearby curve at touchstart time (only when nothing else is under finger)
-            // This doesn't block any gesture — decision is made inside the timer only
-            const capturedCurve = !boxUnder ? findCurveNearPoint(x, y) : null;
-
-            // Single long press timer: box → multi-select, curve → curve group, canvas → sidebar
+            // Single long press timer: box → multi-select, canvas → sidebar
             longPressTimer = setTimeout(() => {
                 longPressTimer = null;
                 longPressDidFire = true;
                 if (longPressBox) {
                     enterMultiSelectMode(longPressBox);
-                } else if (capturedCurve) {
-                    handleCurveLongPress(capturedCurve, x, y);
                 } else {
                     // Long press on empty canvas → open sidebar
                     multiSelectMode = true;
