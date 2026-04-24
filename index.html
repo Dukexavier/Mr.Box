@@ -18,6 +18,7 @@
     <style>
         html {
             overflow: auto;
+            background-color: #292929;
         }
         body {
             margin: 0;
@@ -330,6 +331,13 @@
         }
     </style>
     <script>
+      // Auto-clear storage if ?reset is in URL
+      if (location.search.includes('reset')) {
+        sessionStorage.clear();
+        localStorage.clear();
+        history.replaceState({}, '', location.pathname);
+      }
+
       // ── Service Worker (enables PWA install prompt) ──────────────────────────
       if ('serviceWorker' in navigator) {
         const swCode = `
@@ -379,6 +387,7 @@
     <button id="pwa-install-btn" onclick="triggerInstall()">📲 Add to Home Screen</button>
     <div id="splash-screen">
         <h1>Welcome to Mr.Box 2.0!</h1>
+        <button onclick="sessionStorage.clear();localStorage.clear();location.reload();" style="margin-top:14px;padding:6px 16px;font-size:11px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:20px;cursor:pointer;">Clear & Reset</button>
     </div>
 
     <!-- Your existing content here -->
@@ -614,7 +623,7 @@ window.addEventListener('scroll', () => {
 document.addEventListener('DOMContentLoaded', () => {
     const CANVAS     = 6000;
     // Start fully zoomed out so the whole canvas is visible
-    const INIT_SCALE = Math.max(window.innerWidth / CANVAS, window.innerHeight / CANVAS);
+    const INIT_SCALE = Math.min(window.innerWidth / CANVAS, window.innerHeight / CANVAS);
     const ACTUAL_MAX = 1.0;
 
     // ── Zoom level indicator ──────────────────────────────────────────────────
@@ -2206,6 +2215,79 @@ function zoomToBox(box) {
     );
 }
 
+// Animate camera to centre on selected boxes at a comfortable zoom level.
+// If multiple boxes: fits the bounding box of the group with padding.
+// If one box: zooms to 50% (centre of the zoom range).
+function zoomToSelected() {
+    if (typeof selectedBoxes === 'undefined' || !selectedBoxes.length) return;
+
+    const CANVAS_SIZE = 6000;
+    const MIN_S = Math.min(window.innerWidth / CANVAS_SIZE, window.innerHeight / CANVAS_SIZE);
+    const MAX_S = 1.0;
+    const PADDING = 80; // viewport px padding around group bounding box
+
+    // Compute bounding box of all selected boxes in canvas space
+    let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
+    selectedBoxes.forEach(b => {
+        const l = parseFloat(b.style.left) || b.offsetLeft;
+        const t = parseFloat(b.style.top)  || b.offsetTop;
+        const r = l + b.offsetWidth;
+        const bt = t + b.offsetHeight;
+        if (l  < minLeft)   minLeft   = l;
+        if (t  < minTop)    minTop    = t;
+        if (r  > maxRight)  maxRight  = r;
+        if (bt > maxBottom) maxBottom = bt;
+    });
+
+    const groupW = maxRight  - minLeft;
+    const groupH = maxBottom - minTop;
+    const cx = minLeft + groupW / 2;
+    const cy = minTop  + groupH / 2;
+
+    // Calculate scale to fit the group with padding
+    const targetScale = Math.min(
+        (window.innerWidth  - PADDING * 2) / groupW,
+        (window.innerHeight - PADDING * 2) / groupH,
+        MAX_S
+    );
+    const newScale = Math.max(MIN_S, Math.min(MAX_S, targetScale));
+
+    // Target scroll: centre of group at viewport centre
+    const targetScrollX = cx * newScale - window.innerWidth  / 2;
+    const targetScrollY = cy * newScale - window.innerHeight / 2;
+
+    // Animated transition
+    const startScale  = scale || MIN_S;
+    const startScrollX = window.scrollX;
+    const startScrollY = window.scrollY;
+    const duration = 500; // ms
+    const start = performance.now();
+
+    function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; } // ease-in-out
+
+    function frame(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const e = ease(t);
+        const s = startScale + (newScale - startScale) * e;
+        const sx = startScrollX + (targetScrollX - startScrollX) * e;
+        const sy = startScrollY + (targetScrollY - startScrollY) * e;
+
+        document.body.style.transform = `scale(${s})`;
+        scale = s;
+        if (typeof canvasScale !== 'undefined') window._canvasScaleRef = s;
+        window.scrollTo(sx, sy);
+        if (window.updateZoomIndicator) window.updateZoomIndicator(s);
+
+        if (t < 1) requestAnimationFrame(frame);
+        else {
+            // Commit via applyCanvasScale to sync canvasScale properly
+            applyCanvasScale(newScale, cx, cy);
+        }
+    }
+
+    requestAnimationFrame(frame);
+}
+
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 
@@ -2624,16 +2706,21 @@ function createTransparencySlider(parentBox) {
 
 
 function applyTransparency(box, transparency) {
-    // Handle transparency for the background color layer
-    const backgroundColor = getComputedStyle(box).backgroundColor || "rgba(255, 255, 255, 1)";
-    const rgba = parseRGBA(backgroundColor);
-    box.style.backgroundColor = `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${transparency})`;
-
-    // Handle transparency for the image overlay
-    const imageOverlay = box.querySelector(".image-overlay");
-    if (imageOverlay) {
-        imageOverlay.style.opacity = transparency;
+    if (box.style.backgroundImage && box.style.backgroundImage !== 'none' && box.style.backgroundImage !== '') {
+        // Box has an image background — apply opacity to the whole box element
+        box.style.opacity = transparency;
+    } else {
+        // Colour-only background — use rgba so it doesn't affect child elements visually
+        const backgroundColor = getComputedStyle(box).backgroundColor || 'rgba(255, 255, 255, 1)';
+        const rgba = parseRGBA(backgroundColor);
+        box.style.backgroundColor = `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${transparency})`;
+        // Also reset opacity in case it was set from a previous image state
+        box.style.opacity = '';
     }
+
+    // Handle any explicit image-overlay element
+    const imageOverlay = box.querySelector('.image-overlay');
+    if (imageOverlay) imageOverlay.style.opacity = transparency;
 }
 
 	// Hide icons, including the transparency slider
@@ -3651,7 +3738,7 @@ document.addEventListener('contextmenu', (e) => {
     // ── Canvas scale state ────────────────────────────────────────────────────
     const CANVAS_SIZE = 6000;
     // Min scale = just small enough to see the full canvas in the viewport
-    const MIN_SCALE   = Math.max(window.innerWidth / CANVAS_SIZE, window.innerHeight / CANVAS_SIZE);
+    const MIN_SCALE   = Math.min(window.innerWidth / CANVAS_SIZE, window.innerHeight / CANVAS_SIZE);
     const MAX_SCALE   = 1.0;
     let canvasScale = MIN_SCALE; // matches INIT_SCALE in DOMContentLoaded
 
@@ -3835,6 +3922,23 @@ document.addEventListener('contextmenu', (e) => {
     }
 
     function exitMultiSelectMode() {
+        // Save curve group name before clearing state
+        if (activeCurveGroup) {
+            const nameInput = document.getElementById('curve-name-input');
+            if (nameInput) {
+                const n = nameInput.value.trim();
+                if (n) {
+                    activeCurveGroup.name = n;
+                    activeCurveGroup.curves.forEach(c => { c.dataset.groupName = n; });
+                    curveGroupRegistry.set(n, {
+                        curves: activeCurveGroup.curves,
+                        boxes: activeCurveGroup.boxes,
+                        seedCurve: activeCurveGroup.seedCurve,
+                    });
+                }
+            }
+            activeCurveGroup = null;
+        }
         multiSelectMode = false;
         clearTimeout(selectionPauseTimer);
         if (multiSelectBanner) { multiSelectBanner.remove(); multiSelectBanner = null; }
@@ -3991,34 +4095,42 @@ document.addEventListener('contextmenu', (e) => {
             content.appendChild(divider);
         }
 
+        const hasCurves    = document.querySelector('svg path') !== null;
+        const anyBoxes     = document.querySelectorAll('.parent-box').length > 0;
+        const hasSel       = selectedBoxes.length > 0;
+        const effectiveCount = getEffectiveBoxes().length;
+        const hasEffective = effectiveCount > 0;
+        const hasMultiSel  = effectiveCount > 1;
+        const hasClipboard = groupClipboard !== null;
+        const hasLinedUp   = hasEffective && getEffectiveBoxes().some(b => b.dataset.linedUp === 'true');
+
         const items = [
-            { label: '☑️  Select All',         action: selectAllBoxes },
+            { label: '☑️  Select All',         action: selectAllBoxes,          disabled: !anyBoxes },
             { label: '☐  Deselect All',         action: () => {
                 selectedBoxes.forEach(b => b.classList.remove('selected'));
                 selectedBoxes = [];
-            }},
-            { label: '🔵 Select Connected',     action: selectAllConnectedBoxes },
-            { label: '⚪ Select Unconnected',   action: selectUnconnectedBoxes },
-            { label: '🔗 Connect All',          action: connectAllSelected },
-            { label: '🔗 Connect Unconnected',  action: connectUnconnectedBoxes },
-            { label: '✂️  Disconnect All',       action: disconnectAllSelected },
-            { label: '🤝 Move Together',        action: startGroupMove, dismissAfter: true },
-            { label: '📋 Copy Group',           action: groupCopySelected },
-            { label: '📌 Paste Group',          action: groupPasteSelected },
-            { label: '↔️  Line Up Row',          action: lineUpBoxesInRow },
-            { label: '⬛ Close Gap',             action: closeGapInRow },
-            { label: '🎨 Random Colour Each',   action: randomColourEach,   colourMode: true },
+            },                                                                   disabled: !hasSel },
+            { label: '🔵 Select Connected',     action: selectAllConnectedBoxes, disabled: !anyBoxes },
+            { label: '⚪ Select Unconnected',   action: selectUnconnectedBoxes,  disabled: !anyBoxes },
+            { label: '🔗 Connect All',          action: connectAllSelected,      disabled: !hasMultiSel },
+            { label: '🔗 Connect Unconnected',  action: connectUnconnectedBoxes, disabled: !anyBoxes },
+            { label: '✂️  Disconnect All',       action: disconnectAllSelected,   disabled: !hasEffective },
+            { label: '🔍 Zoom to Selected',      action: zoomToSelected,          disabled: !hasSel },
+            { label: '📋 Copy Group',           action: groupCopySelected,       disabled: !hasSel },
+            { label: '📌 Paste Group',          action: groupPasteSelected,      disabled: !hasClipboard },
+            { label: '🤝 Move Together',        action: startGroupMove,          disabled: !hasSel,         dismissAfter: true },
+            { label: '↔️  Line Up Row',          action: lineUpBoxesInRow,        disabled: !hasMultiSel },
+            { label: '⬛ Close Gap',             action: closeGapInRow,           disabled: !hasLinedUp },
+            { label: '🎨 Random Colour Each',   action: randomColourEach,        disabled: !hasSel, colourMode: true },
             { label: '🎨 Same Colour',          action: () => {
                 const color = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6,'0')}`;
-                getEffectiveBoxes().forEach(b => {
-                    b.style.backgroundImage = '';
-                    b.style.backgroundColor = color;
-                });
-            }, colourMode: true },
+                getEffectiveBoxes().forEach(b => { b.style.backgroundImage=''; b.style.backgroundColor=color; });
+            },                                                                   disabled: !hasSel, colourMode: true },
             { label: () => gridVisible ? '🔲 Hide Grid'   : '🔲 Show Grid',   action: toggleGrid },
-            { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves },
-            { label: '↩️  Reset Selected',       action: resetSelected },
-            { label: '🗑 Delete All',           action: deleteAllSelected, dismissAfter: true },
+            { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves },
+            { label: '👁 Hide Box Elements',     action: hideSelectedBoxElements, disabled: !hasSel },
+            { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
+            { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
             { label: '❌ Deselect All',         action: () => { exitMultiSelectMode(); hideSidebar(); }, dismissAfter: true },
         ];
 
@@ -4034,6 +4146,7 @@ document.addEventListener('contextmenu', (e) => {
             nameRow.style.cssText = 'padding:4px 8px;display:flex;gap:4px;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08);';
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
+            nameInput.id   = 'curve-name-input';
             nameInput.placeholder = 'Group name…';
             nameInput.value = activeCurveGroup.name || '';
             nameInput.style.cssText = 'flex:1;font-size:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:3px;padding:2px 5px;outline:none;';
@@ -4042,7 +4155,6 @@ document.addEventListener('contextmenu', (e) => {
             saveBtn.style.cssText = 'font-size:10px;color:rgba(160,255,120,0.9);cursor:pointer;padding:0 3px;';
             const saveName = () => {
                 const n = nameInput.value.trim();
-                // Remove old registry entry if name changed
                 if (activeCurveGroup.name && activeCurveGroup.name !== n) {
                     curveGroupRegistry.delete(activeCurveGroup.name);
                 }
@@ -4055,8 +4167,11 @@ document.addEventListener('contextmenu', (e) => {
                 });
                 if (multiSelectBanner) multiSelectBanner.textContent = `🔗 Curve group${n ? ': '+n : ''} selected`;
             };
+            // Save on ✓, on blur (tap away), and on every keystroke
             saveBtn.addEventListener('click', saveName);
             saveBtn.addEventListener('touchend', (e) => { e.preventDefault(); saveName(); }, { passive: false });
+            nameInput.addEventListener('blur',  saveName);
+            nameInput.addEventListener('input', saveName);
             nameInput.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
             nameRow.appendChild(nameInput);
             nameRow.appendChild(saveBtn);
@@ -4113,10 +4228,12 @@ document.addEventListener('contextmenu', (e) => {
             content.insertBefore(colourRow, firstBtn);
         }
 
-        items.forEach(({ label, action, dismissAfter, colourMode }) => {
+        items.forEach(({ label, action, dismissAfter, colourMode, disabled }) => {
             const btn = document.createElement('div');
+            const isDisabled = !!disabled;
+
             btn.textContent = typeof label === 'function' ? label() : label;
-            btn.style.cssText = 'padding:6px 10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:rgba(255,255,255,0.88);font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+            btn.style.cssText = `padding:6px 10px;cursor:${isDisabled ? 'default' : 'pointer'};border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:${isDisabled ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.88)'};font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
 
             let touchStartY = 0, isTouchScroll = false;
             btn.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; isTouchScroll = false; }, { passive: true });
@@ -4126,14 +4243,14 @@ document.addEventListener('contextmenu', (e) => {
             btn.addEventListener('touchend',   () => { btn.style.background = ''; }, { passive: true });
 
             const fire = (e) => {
-                if (isTouchScroll) return;
+                if (isTouchScroll || isDisabled) return;
                 if (e.cancelable) e.preventDefault();
                 e.stopPropagation();
                 action();
                 if (colourMode) {
-                    // Hide sidebar, show a small floating repeat button
+                    // Hide sidebar, show the two-icon colour picker
                     hideSidebar();
-                    showColourRepeatButton(action, label);
+                    showColourPicker();
                 } else if (!dismissAfter && multiSelectMode) {
                     setTimeout(() => showContextMenu(), 150);
                 }
@@ -4173,60 +4290,109 @@ document.addEventListener('contextmenu', (e) => {
     // ── Colour repeat button ──────────────────────────────────────────────────
     let colourIdleTimer = null;
 
-    function showColourRepeatButton(action, labelText) {
-        // Remove any existing repeat button
+    function showColourPicker() {
         const existing = document.getElementById('colour-repeat-btn');
         if (existing) existing.remove();
         clearTimeout(colourIdleTimer);
 
-        const fab = document.createElement('div');
-        fab.id = 'colour-repeat-btn';
-        const displayLabel = typeof labelText === 'function' ? labelText() : labelText;
-        fab.textContent = '🎨';
-        fab.title = displayLabel;
-        fab.style.cssText = [
+        // ── Container ────────────────────────────────────────────────────────
+        const container = document.createElement('div');
+        container.id = 'colour-repeat-btn';
+        container.style.cssText = [
             'position:fixed',
-            'bottom:20px',
+            'bottom:22px',
             'right:14px',
-            'width:36px',
-            'height:36px',
-            'border-radius:50%',
-            'background:rgba(0,0,0,0.72)',
-            'color:#fff',
-            'font-size:18px',
+            'width:52px',
+            'height:100px',
+            'border-radius:26px',
+            'background:rgba(0,0,0,0.82)',
             'display:flex',
+            'flex-direction:column',
             'align-items:center',
-            'justify-content:center',
+            'justify-content:space-around',
+            'padding:10px 0',
+            'box-sizing:border-box',
             'z-index:999999',
-            'cursor:pointer',
-            'box-shadow:0 2px 10px rgba(0,0,0,0.4)',
+            'box-shadow:0 2px 12px rgba(0,0,0,0.5)',
+            'pointer-events:none',   // container bg not clickable
             'user-select:none',
         ].join(';');
 
-        const resetIdleTimer = () => {
-            clearTimeout(colourIdleTimer);
-            colourIdleTimer = setTimeout(() => {
-                // Remove the button and reshow the sidebar after 3s idle
-                if (document.getElementById('colour-repeat-btn')) {
-                    fab.remove();
-                    if (multiSelectMode) showContextMenu();
-                }
-            }, 5000);
-        };
-
-        const fireRepeat = (e) => {
+        // ── Random colour icon ───────────────────────────────────────────────
+        const randomBtn = document.createElement('div');
+        randomBtn.textContent = '🎲';
+        randomBtn.title = 'Random colour each';
+        randomBtn.style.cssText = 'font-size:24px;cursor:pointer;pointer-events:all;line-height:1;';
+        const fireRandom = (e) => {
             if (e.cancelable) e.preventDefault();
             e.stopPropagation();
-            action();
+            randomColourEach();
             resetIdleTimer();
         };
+        randomBtn.addEventListener('click',    fireRandom);
+        randomBtn.addEventListener('touchend', fireRandom, { passive: false });
 
-        fab.addEventListener('click',    fireRepeat);
-        fab.addEventListener('touchend', fireRepeat, { passive: false });
-        document.documentElement.appendChild(fab);
+        // ── Same colour icon ─────────────────────────────────────────────────
+        const sameBtn = document.createElement('div');
+        sameBtn.textContent = '🎨';
+        sameBtn.title = 'Same colour all';
+        sameBtn.style.cssText = 'font-size:24px;cursor:pointer;pointer-events:all;line-height:1;';
+        const fireSame = (e) => {
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
+            const color = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6,'0')}`;
+            getEffectiveBoxes().forEach(b => { b.style.backgroundImage=''; b.style.backgroundColor=color; });
+            resetIdleTimer();
+        };
+        sameBtn.addEventListener('click',    fireSame);
+        sameBtn.addEventListener('touchend', fireSame, { passive: false });
 
-        // Start the idle countdown
+        container.appendChild(randomBtn);
+        container.appendChild(sameBtn);
+
+        // ── Idle timer — dismiss after 5s without interaction ────────────────
+        function resetIdleTimer() {
+            clearTimeout(colourIdleTimer);
+            colourIdleTimer = setTimeout(() => {
+                const el = document.getElementById('colour-repeat-btn');
+                if (el) el.remove();
+                if (multiSelectMode) showContextMenu();
+            }, 5000);
+        }
+
+        // ── Dismiss immediately when user taps the canvas ────────────────────
+        const dismissOnCanvas = (e) => {
+            if (!container.contains(e.target)) {
+                container.remove();
+                clearTimeout(colourIdleTimer);
+                document.removeEventListener('touchstart', dismissOnCanvas, true);
+                document.removeEventListener('mousedown',  dismissOnCanvas, true);
+                if (multiSelectMode) showContextMenu();
+            }
+        };
+        setTimeout(() => {
+            document.addEventListener('touchstart', dismissOnCanvas, { capture: true, passive: true });
+            document.addEventListener('mousedown',  dismissOnCanvas, { capture: true, passive: true });
+        }, 200);
+
+        document.documentElement.appendChild(container);
         resetIdleTimer();
+    }
+
+    // Toggle visibility of box controls (close, colour, add text, resize, rotate, camera, slider)
+    // for all selected + connected boxes — same effect as tapping the Hide Button on each.
+    function hideSelectedBoxElements() {
+        const boxes = getEffectiveBoxes();
+        if (!boxes.length) return;
+        // Determine target state from first box (toggle)
+        const first = boxes[0];
+        const elements = first.querySelectorAll('.box-element');
+        const anyVisible = [...elements].some(el => el.style.display !== 'none');
+        boxes.forEach(b => {
+            b.querySelectorAll('.box-element').forEach(el => {
+                el.style.display = anyVisible ? 'none' : '';
+            });
+        });
     }
 
     // ── Grid / Curve visibility toggles ──────────────────────────────────────
@@ -4847,28 +5013,20 @@ document.addEventListener('contextmenu', (e) => {
 
             longPressX = x; longPressY = y; longPressBox = boxUnder;
 
-            // Check if the touch is near an SVG curve path (geometric hit test)
-            const nearCurve = findCurveNearPoint(x, y);
+            // Capture a nearby curve at touchstart time (only when nothing else is under finger)
+            // This doesn't block any gesture — decision is made inside the timer only
+            const capturedCurve = !boxUnder ? findCurveNearPoint(x, y) : null;
 
-            if (nearCurve) {
-                // Long press on a curve — select the connected group
-                e.preventDefault();
-                clearTimeout(longPressTimer);
-                longPressTimer = setTimeout(() => {
-                    longPressTimer = null;
-                    longPressDidFire = true;
-                    handleCurveLongPress(nearCurve, x, y);
-                }, LONG_PRESS_MS);
-                return;
-            }
-
+            // Single long press timer: box → multi-select, curve → curve group, canvas → sidebar
             longPressTimer = setTimeout(() => {
                 longPressTimer = null;
-                longPressDidFire = true; // suppress touchend double-tap logic
+                longPressDidFire = true;
                 if (longPressBox) {
                     enterMultiSelectMode(longPressBox);
+                } else if (capturedCurve) {
+                    handleCurveLongPress(capturedCurve, x, y);
                 } else {
-                    // Long press on empty canvas → open sidebar without selecting a box
+                    // Long press on empty canvas → open sidebar
                     multiSelectMode = true;
                     if (!multiSelectBanner) {
                         multiSelectBanner = document.createElement('div');
@@ -4945,7 +5103,6 @@ document.addEventListener('contextmenu', (e) => {
         // ── Two-finger pinch / pan ─────────────────────────────────────────────
         if (e.touches.length >= 2) {
             e.preventDefault();
-            // Cancel any single-finger state that might have lingered
             touchDragBox  = null;
             touchDragging = false;
 
@@ -4953,12 +5110,17 @@ document.addEventListener('contextmenu', (e) => {
             const newDist = dist(t1, t2);
             const midX = (t1.clientX + t2.clientX) / 2;
             const midY = (t1.clientY + t2.clientY) / 2;
+
             if (pinchStartDist > 0) {
                 const rawRatio = newDist / pinchStartDist;
-                // Dampen: bring ratio closer to 1.0 so zoom feels slower
-                const damped = 1 + (rawRatio - 1) * 0.55;
-                applyCanvasScale(pinchStartScale * damped, pinchMidX, pinchMidY);
+                // Only zoom if fingers are actually spreading/pinching (>2% change)
+                // — pure panning moves both fingers equally, ratio stays ~1.0
+                if (Math.abs(rawRatio - 1) > 0.02) {
+                    const damped = 1 + (rawRatio - 1) * 0.55;
+                    applyCanvasScale(pinchStartScale * damped, pinchMidX, pinchMidY);
+                }
             }
+
             const panDX = panStartMidX - midX, panDY = panStartMidY - midY;
             const { x: cx, y: cy } = clampScroll(panStartScrollX + panDX, panStartScrollY + panDY, canvasScale);
             window.scrollTo(cx, cy);
