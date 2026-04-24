@@ -2706,21 +2706,40 @@ function createTransparencySlider(parentBox) {
 
 
 function applyTransparency(box, transparency) {
-    if (box.style.backgroundImage && box.style.backgroundImage !== 'none' && box.style.backgroundImage !== '') {
-        // Box has an image background — apply opacity to the whole box element
-        box.style.opacity = transparency;
+    const hasImage = box.style.backgroundImage &&
+                     box.style.backgroundImage !== 'none' &&
+                     box.style.backgroundImage !== '';
+
+    if (hasImage) {
+        // Ensure there is an image-overlay div to control independently
+        let overlay = box.querySelector('.image-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.classList.add('image-overlay');
+            overlay.style.cssText = [
+                'position:absolute','top:0','left:0','width:100%','height:100%',
+                'pointer-events:none','z-index:1',
+                `background-image:${box.style.backgroundImage}`,
+                `background-size:${box.style.backgroundSize || '100% 100%'}`,
+                `background-repeat:${box.style.backgroundRepeat || 'no-repeat'}`,
+                'background-position:center',
+            ].join(';');
+            // Move the image off the box itself so only the overlay shows it
+            box.style.backgroundImage = '';
+            box.insertBefore(overlay, box.firstChild);
+        }
+        overlay.style.opacity = transparency;
     } else {
-        // Colour-only background — use rgba so it doesn't affect child elements visually
-        const backgroundColor = getComputedStyle(box).backgroundColor || 'rgba(255, 255, 255, 1)';
+        // Colour-only background — use rgba so only the bg colour fades
+        box.style.opacity = '';
+        const backgroundColor = getComputedStyle(box).backgroundColor || 'rgba(255,255,255,1)';
         const rgba = parseRGBA(backgroundColor);
         box.style.backgroundColor = `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${transparency})`;
-        // Also reset opacity in case it was set from a previous image state
-        box.style.opacity = '';
     }
 
-    // Handle any explicit image-overlay element
-    const imageOverlay = box.querySelector('.image-overlay');
-    if (imageOverlay) imageOverlay.style.opacity = transparency;
+    // Also handle any existing overlay (e.g. from previous image sessions)
+    const overlay = box.querySelector('.image-overlay');
+    if (overlay && !hasImage) overlay.style.opacity = transparency;
 }
 
 	// Hide icons, including the transparency slider
@@ -4128,6 +4147,7 @@ document.addEventListener('contextmenu', (e) => {
             },                                                                   disabled: !hasSel, colourMode: true },
             { label: () => gridVisible ? '🔲 Hide Grid'   : '🔲 Show Grid',   action: toggleGrid },
             { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves },
+            { label: '🖼 Canvas Background',    action: setCanvasBackground },
             { label: '👁 Hide Box Elements',     action: hideSelectedBoxElements, disabled: !hasSel },
             { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
             { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
@@ -4261,6 +4281,33 @@ document.addEventListener('contextmenu', (e) => {
             content.appendChild(btn);
         });
 
+        // ── Canvas background transparency (shown when bg image is set) ─────────
+        const canvasBgOverlay = document.getElementById('canvas-bg-overlay');
+        if (canvasBgOverlay && canvasBgOverlay.style.backgroundImage) {
+            const bgSection = document.createElement('div');
+            bgSection.style.cssText = 'padding:5px 8px 4px;border-top:1px solid rgba(255,255,255,0.1);margin-top:4px;';
+
+            const bgLabel = document.createElement('div');
+            bgLabel.textContent = '🖼 Canvas opacity';
+            bgLabel.style.cssText = 'font-size:7px;color:rgba(255,255,255,0.5);margin-bottom:4px;';
+
+            const bgSlider = document.createElement('input');
+            bgSlider.type  = 'range';
+            bgSlider.min   = '0';
+            bgSlider.max   = '100';
+            bgSlider.step  = '5';
+            bgSlider.value = Math.round(canvasBgOpacity * 100);
+            bgSlider.style.cssText = 'width:100%;cursor:pointer;touch-action:none;';
+            bgSlider.addEventListener('input', () => {
+                applyCanvasBgImage(null, bgSlider.value / 100);
+            });
+            bgSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+
+            bgSection.appendChild(bgLabel);
+            bgSection.appendChild(bgSlider);
+            content.appendChild(bgSection);
+        }
+
         // Slide in
         sb.style.right = '0';
 
@@ -4393,6 +4440,64 @@ document.addEventListener('contextmenu', (e) => {
                 el.style.display = anyVisible ? 'none' : '';
             });
         });
+    }
+
+    // ── Canvas background image ───────────────────────────────────────────────
+    let canvasBgOpacity = 1.0;
+
+    function setCanvasBackground() {
+        const input = document.createElement('input');
+        input.type   = 'file';
+        input.accept = 'image/*';
+        input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;width:1px;height:1px;';
+
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const url = ev.target.result;
+                applyCanvasBgImage(url, canvasBgOpacity);
+                // Hide the grid so the image shows clearly
+                const grid = document.querySelector('.grid');
+                if (grid) grid.style.opacity = '0';
+                gridVisible = false;
+                // Reshow sidebar so the transparency slider appears
+                setTimeout(() => showContextMenu(), 200);
+            };
+            reader.readAsDataURL(file);
+            if (input.parentNode) input.parentNode.removeChild(input);
+        });
+
+        const cleanup = () => {
+            setTimeout(() => { if (input.parentNode) input.parentNode.removeChild(input); }, 500);
+            window.removeEventListener('focus', cleanup);
+        };
+        window.addEventListener('focus', cleanup);
+        document.body.appendChild(input);
+        input.click();
+    }
+
+    function applyCanvasBgImage(url, opacity) {
+        // Use a pseudo-element-like overlay div behind the body content
+        let overlay = document.getElementById('canvas-bg-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'canvas-bg-overlay';
+            overlay.style.cssText = [
+                'position:absolute','top:0','left:0',
+                'width:6000px','height:6000px',
+                'pointer-events:none',
+                'z-index:0',
+                'background-size:cover',
+                'background-repeat:no-repeat',
+                'background-position:center',
+            ].join(';');
+            document.body.insertBefore(overlay, document.body.firstChild);
+        }
+        if (url) overlay.style.backgroundImage = `url('${url}')`;
+        overlay.style.opacity = opacity;
+        canvasBgOpacity = opacity;
     }
 
     // ── Grid / Curve visibility toggles ──────────────────────────────────────
