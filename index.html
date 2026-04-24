@@ -610,8 +610,10 @@ updateGridVisibility();
 // This catches native browser scroll as well as programmatic scrollTo calls.
 window.addEventListener('scroll', () => {
     const s = scale || 0.065;
-    const maxX = Math.max(0, 6000 * s - window.innerWidth);
-    const maxY = Math.max(0, 6000 * s - window.innerHeight);
+    const cW = window._canvasW || 6000;
+    const cH = window._canvasH || 6000;
+    const maxX = Math.max(0, cW * s - window.innerWidth);
+    const maxY = Math.max(0, cH * s - window.innerHeight);
     const cx = Math.max(0, Math.min(window.scrollX, maxX));
     const cy = Math.max(0, Math.min(window.scrollY, maxY));
     if (cx !== window.scrollX || cy !== window.scrollY) {
@@ -621,10 +623,27 @@ window.addEventListener('scroll', () => {
 
 // Start at 0.5 scale (half size) and centre the viewport on the canvas middle
 document.addEventListener('DOMContentLoaded', () => {
-    const CANVAS     = 6000;
-    // Start fully zoomed out so the whole canvas is visible
-    const INIT_SCALE = Math.min(window.innerWidth / CANVAS, window.innerHeight / CANVAS);
+    const CANVAS_W = 6000;
+    // Make canvas height match the screen aspect ratio so it fills the screen perfectly at min zoom
+    const CANVAS_H = Math.round(6000 * (window.innerHeight / window.innerWidth));
+    document.body.style.width  = `${CANVAS_W}px`;
+    document.body.style.height = `${CANVAS_H}px`;
+
+    // Also resize the grid and canvas-border to match
+    const gridEl = document.querySelector('.grid');
+    const borderEl = document.getElementById('canvas-border');
+    if (gridEl)   { gridEl.style.width = `${CANVAS_W}px`; gridEl.style.height = `${CANVAS_H}px`; }
+    if (borderEl) { borderEl.style.width = `${CANVAS_W}px`; borderEl.style.height = `${CANVAS_H}px`; }
+    const bgOverlay = document.getElementById('canvas-bg-overlay');
+    if (bgOverlay) { bgOverlay.style.width = `${CANVAS_W}px`; bgOverlay.style.height = `${CANVAS_H}px`; }
+
+    // MIN scale = fit the full canvas on screen (width-based since height now matches)
+    const INIT_SCALE = window.innerWidth / CANVAS_W;
     const ACTUAL_MAX = 1.0;
+
+    // Store canvas size globally for scroll clamping
+    window._canvasW = CANVAS_W;
+    window._canvasH = CANVAS_H;
 
     // ── Zoom level indicator ──────────────────────────────────────────────────
     const zoomLabel = document.createElement('div');
@@ -659,8 +678,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Scroll so the visual centre of the scaled canvas sits in the viewport centre.
     // Visible canvas size = CANVAS * INIT_SCALE.
     // Scroll to put viewport centre on canvas centre.
-    const scaledW = CANVAS * INIT_SCALE;
-    const scaledH = CANVAS * INIT_SCALE;
+    const scaledW = CANVAS_W * INIT_SCALE;
+    const scaledH = CANVAS_H * INIT_SCALE;
     window.scrollTo(
         (scaledW - window.innerWidth)  / 2,
         (scaledH - window.innerHeight) / 2
@@ -3755,18 +3774,16 @@ document.addEventListener('contextmenu', (e) => {
     }
 
     // ── Canvas scale state ────────────────────────────────────────────────────
-    const CANVAS_SIZE = 6000;
-    // Min scale = just small enough to see the full canvas in the viewport
-    const MIN_SCALE   = Math.min(window.innerWidth / CANVAS_SIZE, window.innerHeight / CANVAS_SIZE);
-    const MAX_SCALE   = 1.0;
-    let canvasScale = MIN_SCALE; // matches INIT_SCALE in DOMContentLoaded
+    const CANVAS_SIZE   = window._canvasW || 6000;
+    const CANVAS_H_SIZE = window._canvasH || 6000;
+    const MIN_SCALE     = window.innerWidth / CANVAS_SIZE;
+    const MAX_SCALE     = 1.0;
+    let canvasScale     = MIN_SCALE;
 
     function clampScroll(sx, sy, s) {
-        const scaledW = CANVAS_SIZE * s;
-        const scaledH = CANVAS_SIZE * s;
         return {
-            x: Math.max(0, Math.min(sx, Math.max(0, scaledW - window.innerWidth))),
-            y: Math.max(0, Math.min(sy, Math.max(0, scaledH - window.innerHeight))),
+            x: Math.max(0, Math.min(sx, Math.max(0, CANVAS_SIZE   * s - window.innerWidth))),
+            y: Math.max(0, Math.min(sy, Math.max(0, CANVAS_H_SIZE * s - window.innerHeight))),
         };
     }
 
