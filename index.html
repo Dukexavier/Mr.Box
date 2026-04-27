@@ -277,6 +277,7 @@
             top: 0;
             left: 0;
             pointer-events: none;
+            z-index: 2; /* above canvas-bg-overlay (z-index:0) but below boxes */
         }
         path.selected-curve {
 		stroke: white;
@@ -4203,6 +4204,9 @@ document.addEventListener('contextmenu', (e) => {
             { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves },
             { label: '🖼 Canvas Background',    action: setCanvasBackground },
             { label: '🗑 Remove Canvas BG',      action: removeCanvasBackground, disabled: !(function(){ const o=document.getElementById('canvas-bg-overlay'); return o && o.style.backgroundImage; })() },
+            { label: '⬜ BG: Cover (Fill)',      action: () => applyCanvasBgSize('cover') },
+            { label: '⬜ BG: Contain (Fit)',     action: () => applyCanvasBgSize('contain') },
+            { label: '⬜ BG: Stretch',           action: () => applyCanvasBgSize('100% 100%') },
             { label: '👁 Hide Box Elements',     action: hideSelectedBoxElements, disabled: !hasSel },
             { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
             { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
@@ -4629,6 +4633,11 @@ document.addEventListener('contextmenu', (e) => {
         window.addEventListener('focus', cleanup);
         document.body.appendChild(input);
         input.click();
+    }
+
+    function applyCanvasBgSize(sizeValue) {
+        const overlay = document.getElementById('canvas-bg-overlay');
+        if (overlay) overlay.style.backgroundSize = sizeValue;
     }
 
     function removeCanvasBackground() {
