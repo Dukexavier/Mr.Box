@@ -4859,15 +4859,18 @@ document.addEventListener('contextmenu', (e) => {
         const originTop  = Math.min(...snapshots.map(s => s.top));
 
         const newBoxes = snapshots.map((snap, idx) => {
-            const newLeft = Math.round((snap.left - originLeft) / GRID) * GRID * 2 + GRID; // spread with gap
-            const newBox = createBox(newLeft, pasteTop);
+            // Preserve exact relative position from group origin
+            const relLeft = snap.left - originLeft;
+            const relTop  = snap.top  - originTop;
+            const clamped = clampToCanvas(relLeft, pasteTop + relTop, snap.width, snap.height);
+            const newBox = createBox(clamped.left, clamped.top);
 
             newBox.style.width           = `${snap.width}px`;
             newBox.style.height          = `${snap.height}px`;
             newBox.style.backgroundColor = snap.backgroundColor;
             newBox.style.backgroundImage = snap.backgroundImage;
             if (snap.opacity)   newBox.style.opacity   = snap.opacity;
-            if (snap.transform) newBox.style.transform = snap.transform;
+            if (snap.transform) newBox.style.transform = snap.transform; // preserve rotation/scale
 
             if (snap.titleBox) {
                 const tb = document.createElement('div');
@@ -5041,12 +5044,9 @@ document.addEventListener('contextmenu', (e) => {
         if (selectedBoxes.length < 1) return;
         const GRID = 200;
         const GAP  = 200;
+        const STEP = GRID + GAP; // 400px per box including gap
 
-        // Include all curve-connected boxes
         const boxes = getEffectiveBoxes();
-
-        // Build a chain ordered by curve connections using a linear-walk approach.
-        // Find the box with the fewest connections (ideally 1) as the chain start — that's an endpoint.
         const chainOrdered = buildChainOrder(boxes);
 
         let startLeft = Infinity, startTop = Infinity;
@@ -5059,9 +5059,15 @@ document.addEventListener('contextmenu', (e) => {
         startLeft = Math.round(startLeft / GRID) * GRID;
         startTop  = Math.round(startTop  / GRID) * GRID;
 
+        // How many boxes fit in one row before exceeding canvas width
+        const canvasW = window._canvasW || 6000;
+        const boxesPerRow = Math.max(1, Math.floor((canvasW - startLeft) / STEP));
+
         chainOrdered.forEach((b, i) => {
-            b.style.left = `${startLeft + i * (GRID + GAP)}px`;
-            b.style.top  = `${startTop}px`;
+            const col = i % boxesPerRow;
+            const row = Math.floor(i / boxesPerRow);
+            b.style.left = `${startLeft + col * STEP}px`;
+            b.style.top  = `${startTop  + row * (GRID + GAP)}px`;
             b.dataset.linedUp = 'true';
             updateCurves(b);
         });
