@@ -5329,29 +5329,39 @@ document.addEventListener('contextmenu', (e) => {
 
             longPressX = x; longPressY = y; longPressBox = boxUnder;
 
-            // Single long press timer: box → multi-select, canvas → sidebar
+            // Capture touch position for curve detection (run inside timer, not here)
+            const holdX = x, holdY = y;
+
+            // Single long press timer: box → multi-select, curve → curve group, canvas → sidebar
             longPressTimer = setTimeout(() => {
                 longPressTimer = null;
                 longPressDidFire = true;
                 if (longPressBox) {
                     enterMultiSelectMode(longPressBox);
                 } else {
-                    // Long press on empty canvas → open sidebar
-                    multiSelectMode = true;
-                    if (!multiSelectBanner) {
-                        multiSelectBanner = document.createElement('div');
-                        multiSelectBanner.style.cssText = [
-                            'position:fixed','top:0','left:50%','transform:translateX(-50%)',
-                            'background:rgba(255,220,0,0.9)','color:#333',
-                            'text-align:center','font-size:8px','font-family:Arial,sans-serif',
-                            'padding:2px 8px','z-index:999999','pointer-events:none',
-                            'border-radius:0 0 5px 5px','white-space:nowrap',
-                            'box-shadow:0 1px 4px rgba(0,0,0,0.18)',
-                        ].join(';');
-                        multiSelectBanner.textContent = '✔ Tap to add — pause for options';
-                        document.documentElement.appendChild(multiSelectBanner);
+                    // Check for nearby curve only after hold is confirmed (no blocking at touchstart)
+                    let nearCurve = null;
+                    try { nearCurve = findCurveNearPoint(holdX, holdY); } catch(_) {}
+                    if (nearCurve) {
+                        handleCurveLongPress(nearCurve, holdX, holdY);
+                    } else {
+                        // Long press on empty canvas → open sidebar
+                        multiSelectMode = true;
+                        if (!multiSelectBanner) {
+                            multiSelectBanner = document.createElement('div');
+                            multiSelectBanner.style.cssText = [
+                                'position:fixed','top:0','left:50%','transform:translateX(-50%)',
+                                'background:rgba(255,220,0,0.9)','color:#333',
+                                'text-align:center','font-size:8px','font-family:Arial,sans-serif',
+                                'padding:2px 8px','z-index:999999','pointer-events:none',
+                                'border-radius:0 0 5px 5px','white-space:nowrap',
+                                'box-shadow:0 1px 4px rgba(0,0,0,0.18)',
+                            ].join(';');
+                            multiSelectBanner.textContent = '✔ Tap to add — pause for options';
+                            document.documentElement.appendChild(multiSelectBanner);
+                        }
+                        showContextMenu();
                     }
-                    showContextMenu();
                 }
             }, LONG_PRESS_MS);
 
