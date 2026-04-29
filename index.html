@@ -301,20 +301,20 @@
             animation-delay: 2s;
         }
         #splash-screen img {
-            width: 300px;
-            height: 300px;
-            border-radius: 64px;
-            box-shadow: 0 8px 48px rgba(170,68,255,0.6);
+            width: 150px;
+            height: 150px;
+            border-radius: 32px;
+            box-shadow: 0 4px 24px rgba(170,68,255,0.5);
         }
         #splash-screen h1 {
-            font-size: 72px;
+            font-size: 36px;
             margin: 0;
             font-family: Arial, sans-serif;
             font-weight: 700;
             letter-spacing: 0.02em;
         }
         #splash-screen .splash-sub {
-            font-size: 22px;
+            font-size: 11px;
             opacity: 0.6;
             font-family: Arial, sans-serif;
             margin-top: -10px;
@@ -2771,7 +2771,6 @@ function applyTransparency(box, transparency) {
                 'position:absolute','top:0','left:0','width:100%','height:100%',
                 'pointer-events:none','z-index:1',
                 `background-image:${box.style.backgroundImage}`,
-                `background-size:${box.style.backgroundSize || '100% 100%'}`,
                 `background-repeat:${box.style.backgroundRepeat || 'no-repeat'}`,
                 'background-position:center',
             ].join(';');
@@ -4178,6 +4177,17 @@ document.addEventListener('contextmenu', (e) => {
         const hasClipboard = groupClipboard !== null;
         const hasLinedUp   = hasEffective && getEffectiveBoxes().some(b => b.dataset.linedUp === 'true');
 
+        // Canvas is "full" when boxes fill all grid cells — disable bulk ops that make no sense
+        const GRID = 200;
+        const cW = window._canvasW || 6000;
+        const cH = window._canvasH || 6000;
+        const expectedCells = Math.floor(cW / GRID) * Math.floor(cH / GRID);
+        const boxCount = document.querySelectorAll('.parent-box').length;
+        const canvasFull = boxCount >= expectedCells && boxCount > 0;
+
+        // Zoom to selected only valid when exactly ONE box is long-pressed (single focus)
+        const singleSel = selectedBoxes.length === 1;
+
         const items = [
             { label: '☑️  Select All',         action: selectAllBoxes,          disabled: !anyBoxes },
             { label: '☐  Deselect All',         action: () => {
@@ -4185,28 +4195,25 @@ document.addEventListener('contextmenu', (e) => {
                 selectedBoxes = [];
             },                                                                   disabled: !hasSel },
             { label: '🔵 Select Connected',     action: selectAllConnectedBoxes, disabled: !anyBoxes },
-            { label: '⚪ Select Unconnected',   action: selectUnconnectedBoxes,  disabled: !anyBoxes || allConnected },
-            { label: '🔗 Connect All',          action: connectAllSelected,      disabled: !hasMultiSel },
-            { label: '🔗 Connect Unconnected',  action: connectUnconnectedBoxes, disabled: !anyBoxes },
+            { label: '⚪ Select Unconnected',   action: selectUnconnectedBoxes,  disabled: !anyBoxes || allConnected || canvasFull },
+            { label: '🔗 Connect All',          action: connectAllSelected,      disabled: !hasMultiSel || canvasFull },
+            { label: '🔗 Connect Unconnected',  action: connectUnconnectedBoxes, disabled: !anyBoxes || canvasFull },
             { label: '✂️  Disconnect All',       action: disconnectAllSelected,   disabled: !hasEffective },
-            { label: '🔍 Zoom to Selected',      action: zoomToSelected,          disabled: !hasSel },
-            { label: '📋 Copy Group',           action: groupCopySelected,       disabled: !hasSel },
-            { label: '📌 Paste Group',          action: groupPasteSelected,      disabled: !hasClipboard },
-            { label: '🤝 Move Together',        action: startGroupMove,          disabled: !hasSel,         dismissAfter: true },
-            { label: '↔️  Line Up Row',          action: lineUpBoxesInRow,        disabled: !hasMultiSel },
+            { label: '🔍 Zoom to Selected',      action: zoomToSelected,          disabled: !singleSel },
+            { label: '📋 Copy Group',           action: groupCopySelected,       disabled: !hasSel || canvasFull },
+            { label: '📌 Paste Group',          action: groupPasteSelected,      disabled: !hasClipboard || canvasFull },
+            { label: '🤝 Move Together',        action: startGroupMove,          disabled: !hasSel || canvasFull, dismissAfter: true },
+            { label: '↔️  Line Up Row',          action: lineUpBoxesInRow,        disabled: !hasMultiSel || canvasFull },
             { label: '⬛ Close Gap',             action: closeGapInRow,           disabled: !hasLinedUp },
             { label: '🎨 Random Colour Each',   action: randomColourEach,        disabled: !hasSel, colourMode: true },
             { label: '🎨 Same Colour',          action: () => {
                 const color = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6,'0')}`;
                 getEffectiveBoxes().forEach(b => { b.style.backgroundImage=''; b.style.backgroundColor=color; });
             },                                                                   disabled: !hasSel, colourMode: true },
-            { label: () => gridVisible ? '🔲 Hide Grid'   : '🔲 Show Grid',   action: toggleGrid },
-            { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves },
+            { label: '⬛ Fill Canvas Grid',      action: fillCanvasWithGrid },
+            { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves || canvasFull },
             { label: '🖼 Canvas Background',    action: setCanvasBackground },
             { label: '🗑 Remove Canvas BG',      action: removeCanvasBackground, disabled: !(function(){ const o=document.getElementById('canvas-bg-overlay'); return o && o.style.backgroundImage; })() },
-            { label: '⬜ BG: Cover (Fill)',      action: () => applyCanvasBgSize('cover') },
-            { label: '⬜ BG: Contain (Fit)',     action: () => applyCanvasBgSize('contain') },
-            { label: '⬜ BG: Stretch',           action: () => applyCanvasBgSize('100% 100%') },
             { label: '👁 Hide Box Elements',     action: hideSelectedBoxElements, disabled: !hasSel },
             { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
             { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
@@ -4651,7 +4658,6 @@ document.addEventListener('contextmenu', (e) => {
     }
 
     function applyCanvasBgImage(url, opacity) {
-        // Use a pseudo-element-like overlay div behind the body content
         let overlay = document.getElementById('canvas-bg-overlay');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -4670,6 +4676,86 @@ document.addEventListener('contextmenu', (e) => {
         if (url) overlay.style.backgroundImage = `url('${url}')`;
         overlay.style.opacity = opacity;
         canvasBgOpacity = opacity;
+    }
+
+    // Fill every grid cell on the canvas with a box, then connect all adjacent boxes with curves.
+    function fillCanvasWithGrid() {
+        const GRID   = 200;
+        const cW     = window._canvasW || 6000;
+        const cH     = window._canvasH || 6000;
+        const cols   = Math.floor(cW / GRID);
+        const rows   = Math.floor(cH / GRID);
+
+        // Progress banner
+        const banner = document.createElement('div');
+        banner.id = 'fill-grid-banner';
+        banner.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:rgba(80,60,180,0.9);color:#fff;font-size:8px;font-family:Arial,sans-serif;padding:3px 12px;border-radius:0 0 6px 6px;z-index:999999;pointer-events:none;white-space:nowrap;';
+        banner.textContent = `Creating ${cols * rows} boxes…`;
+        document.documentElement.appendChild(banner);
+
+        // Create all boxes first in a grid array
+        const grid = []; // grid[row][col] = box element
+        let created = 0;
+        const total = cols * rows;
+
+        const createBatch = () => {
+            const BATCH = 50;
+            for (let i = 0; i < BATCH && created < total; i++, created++) {
+                const col = created % cols;
+                const row = Math.floor(created / cols);
+                const box = createBox(col * GRID, row * GRID);
+                document.body.appendChild(box);
+                history.push({ action: 'add', element: box });
+                if (!grid[row]) grid[row] = [];
+                grid[row][col] = box;
+            }
+            banner.textContent = `Creating boxes… ${Math.round(created/total*100)}%`;
+            if (created < total) { requestAnimationFrame(createBatch); return; }
+
+            // All boxes created — now connect adjacent pairs with curves
+            banner.textContent = 'Connecting boxes…';
+            const svg = document.querySelector('svg') || createSVGLayer();
+            let connected = 0;
+            const pairs = [];
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (c < cols - 1) pairs.push([grid[r][c], grid[r][c+1]]); // right
+                    if (r < rows - 1) pairs.push([grid[r][c], grid[r+1][c]]); // down
+                }
+            }
+
+            const connectBatch = () => {
+                const CBATCH = 100;
+                for (let i = 0; i < CBATCH && connected < pairs.length; i++, connected++) {
+                    const [bA, bB] = pairs[connected];
+                    const a = canvasHideCenter(bA);
+                    const b = canvasHideCenter(bB);
+                    if (!a || !b) continue;
+                    const curve = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    curve.setAttribute('stroke', 'purple');
+                    curve.setAttribute('stroke-width', '4');
+                    curve.setAttribute('fill', 'none');
+                    curve.setAttribute('d', createBezierCurve(a.x, a.y, b.x, b.y));
+                    svg.appendChild(curve);
+                    attachCurve(bA, bB, curve);
+                    enableCurveInteraction(curve);
+                }
+                banner.textContent = `Connecting… ${Math.round(connected/pairs.length*100)}%`;
+                if (connected < pairs.length) { requestAnimationFrame(connectBatch); return; }
+
+                // Done
+                banner.remove();
+                // Select all the new boxes and reshow sidebar
+                selectedBoxes.forEach(b => b.classList.remove('selected'));
+                selectedBoxes = grid.flat().filter(Boolean);
+                selectedBoxes.forEach(b => b.classList.add('selected'));
+                setTimeout(() => showContextMenu(), 200);
+            };
+            requestAnimationFrame(connectBatch);
+        };
+
+        requestAnimationFrame(createBatch);
     }
 
     // ── Grid / Curve visibility toggles ──────────────────────────────────────
@@ -5291,6 +5377,15 @@ document.addEventListener('contextmenu', (e) => {
                 const bannerExists = !!multiSelectBanner;
                 if (!sidebarOpen && !bannerExists) {
                     exitMultiSelectMode();
+                }
+            }
+
+            // If sidebar is open, any tap outside the sidebar closes it
+            if (sidebar && sidebar.style.right === '0px') {
+                const sidebarEl = document.getElementById('group-sidebar');
+                if (sidebarEl && !sidebarEl.contains(e.target)) {
+                    hideSidebar();
+                    return;
                 }
             }
 
