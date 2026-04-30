@@ -4200,8 +4200,10 @@ document.addEventListener('contextmenu', (e) => {
             { label: '🔗 Connect Unconnected',  action: connectUnconnectedBoxes, disabled: !anyBoxes || canvasFull },
             { label: '✂️  Disconnect All',       action: disconnectAllSelected,   disabled: !hasEffective },
             { label: '🔍 Zoom to Selected',      action: zoomToSelected,          disabled: !singleSel },
-            { label: '📋 Copy Group',           action: groupCopySelected,       disabled: !hasSel || canvasFull },
-            { label: '📌 Paste Group',          action: groupPasteSelected,      disabled: !hasClipboard || canvasFull },
+            { label: () => hasSel ? '📋 Copy Group' : (hasClipboard ? '📌 Paste Group' : '📋 Copy Group'),
+              action: () => { if (hasSel) groupCopySelected(); else if (hasClipboard) groupPasteSelected(); },
+              disabled: (!hasSel && !hasClipboard) || canvasFull },
+            { label: '🔍 Zoom to Selected',      action: zoomToSelected,          disabled: !singleSel },
             { label: '🤝 Move Together',        action: startGroupMove,          disabled: !hasSel || canvasFull, dismissAfter: true },
             { label: '↔️  Line Up Row',          action: lineUpBoxesInRow,        disabled: !hasMultiSel || canvasFull },
             { label: '⬛ Close Gap',             action: closeGapInRow,           disabled: !hasLinedUp },
@@ -4223,7 +4225,7 @@ document.addEventListener('contextmenu', (e) => {
               },                                                                   action: hideSelectedBoxElements, disabled: !hasSel },
             { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
             { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
-            { label: '❌ Deselect All',         action: () => { exitMultiSelectMode(); hideSidebar(); }, dismissAfter: true },
+            { label: '❌ Deselect All',         action: () => { exitMultiSelectMode(); hideSidebar(); }, dismissAfter: true, disabled: !hasSel },
         ];
 
         // ── Curve group section (only visible when a curve group is selected) ──
