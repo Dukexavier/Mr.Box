@@ -4181,7 +4181,7 @@ document.addEventListener('contextmenu', (e) => {
         const GRID = 200;
         const cW = window._canvasW || 6000;
         const cH = window._canvasH || 6000;
-        const expectedCells = Math.floor(cW / GRID) * Math.floor(cH / GRID);
+        const expectedCells = Math.floor(cW / GRID) * Math.ceil(cH / GRID);
         const boxCount = document.querySelectorAll('.parent-box').length;
         const canvasFull = boxCount >= expectedCells && boxCount > 0;
 
@@ -4210,11 +4210,17 @@ document.addEventListener('contextmenu', (e) => {
                 const color = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6,'0')}`;
                 getEffectiveBoxes().forEach(b => { b.style.backgroundImage=''; b.style.backgroundColor=color; });
             },                                                                   disabled: !hasSel, colourMode: true },
-            { label: '⬛ Fill Canvas Grid',      action: fillCanvasWithGrid },
+            { label: '⬛ Fill Canvas Grid',      action: fillCanvasWithGrid,      disabled: canvasFull },
             { label: () => curvesVisible ? '〰️ Hide Curves' : '〰️ Show Curves', action: toggleCurves,  disabled: !hasCurves || canvasFull },
             { label: '🖼 Canvas Background',    action: setCanvasBackground },
             { label: '🗑 Remove Canvas BG',      action: removeCanvasBackground, disabled: !(function(){ const o=document.getElementById('canvas-bg-overlay'); return o && o.style.backgroundImage; })() },
-            { label: '👁 Hide Box Elements',     action: hideSelectedBoxElements, disabled: !hasSel },
+            { label: () => {
+                const boxes = getEffectiveBoxes();
+                if (!boxes.length) return '👁 Hide Box Elements';
+                const any = boxes[0].querySelectorAll('.box-element');
+                const anyVisible = [...any].some(el => el.style.display !== 'none');
+                return anyVisible ? '👁 Hide Box Elements' : '👁 Show Box Elements';
+              },                                                                   action: hideSelectedBoxElements, disabled: !hasSel },
             { label: '↩️  Reset Selected',       action: resetSelected,           disabled: !hasSel },
             { label: '🗑 Delete All',           action: deleteAllSelected,       disabled: !hasSel, dismissAfter: true },
             { label: '❌ Deselect All',         action: () => { exitMultiSelectMode(); hideSidebar(); }, dismissAfter: true },
@@ -4684,7 +4690,7 @@ document.addEventListener('contextmenu', (e) => {
         const cW     = window._canvasW || 6000;
         const cH     = window._canvasH || 6000;
         const cols   = Math.floor(cW / GRID);
-        const rows   = Math.floor(cH / GRID);
+        const rows   = Math.ceil(cH / GRID);  // ceil so bottom row is included
 
         // Progress banner
         const banner = document.createElement('div');
@@ -4744,8 +4750,11 @@ document.addEventListener('contextmenu', (e) => {
                 banner.textContent = `Connecting… ${Math.round(connected/pairs.length*100)}%`;
                 if (connected < pairs.length) { requestAnimationFrame(connectBatch); return; }
 
-                // Done
+                // Done — hide all box elements so only the colour shows
                 banner.remove();
+                grid.flat().filter(Boolean).forEach(b => {
+                    b.querySelectorAll('.box-element').forEach(el => { el.style.display = 'none'; });
+                });
                 // Select all the new boxes and reshow sidebar
                 selectedBoxes.forEach(b => b.classList.remove('selected'));
                 selectedBoxes = grid.flat().filter(Boolean);
